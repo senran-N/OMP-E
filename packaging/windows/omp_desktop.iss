@@ -2,7 +2,7 @@
 ; Build via: ISCC.exe /DAppVersion=0.1.0 /DBuildDir=..\..\build-release packaging\windows\omp_desktop.iss
 
 #ifndef AppVersion
-  #define AppVersion "0.1.0"
+  #define AppVersion "0.1.1"
 #endif
 
 #ifndef BuildDir

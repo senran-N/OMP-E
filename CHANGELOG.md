@@ -5,6 +5,13 @@ All notable changes to OMP Desktop are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-11-22
+
+### Fixed
+- **Small Text Solid-Block Rendering Under Long Threads**: Fixed an `Etch` render-batcher fallback (`optimize_render_batches`) where frame-arena exhaustion routed small hinted `PrimKind::Glyph` primitives into the `Uber` pipeline (sampling the solid-white fallback texture instead of the ClearType subpixel atlas), turning `<= 24px` text into solid color blocks in long conversations.
+- **Missing Random Characters in Long Conversations**: Fixed transient frame-arena exhaustion in `Etch` (`get_or_cache_hinted_glyph` and `slug_get_glyph`) permanently caching empty/failed glyph entries, fixed an un-rewound per-CJK-cluster `frame_arena` allocation in `pick_fallback_slot_for_cluster`, and fixed a subpixel atlas boundary-growth bug in `ensure_subpixel_atlas`.
+- **Headroom for Massive Conversations**: Increased virtual `frame_arena_bytes` reservation to 16 MB (demand-paged with zero extra idle RAM) and initial primitive capacity to 32,768.
+
 ## [0.1.0] - 2026-11-22
 
 Initial public release of OMP Desktop — a native C++20 GPU desktop client for `oh-my-pi` (`omp`).

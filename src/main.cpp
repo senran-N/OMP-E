@@ -356,8 +356,8 @@ int main(int argc, char** argv) {
 
     etch::Context* ctx = etch::create_context(etch::ContextDesc{
         .window = window,
-        .frame_arena_bytes = 2u * 1024u * 1024u,
-        .max_prims_per_frame = 16384u,
+        .frame_arena_bytes = 16u * 1024u * 1024u,
+        .max_prims_per_frame = 32768u,
     });
     if (!ctx) {
         std::fprintf(stderr, "etch::create_context failed\n");
