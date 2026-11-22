@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release-windows:
+    name: Build Windows x64 Installer
+    runs-on: windows-latest
+    steps:
+      - name: Checkout OMP-E
+        uses: actions/checkout@v4
+
+      - name: Extract Version
+        id: ver
+        shell: pwsh
+        run: |
+          $tag = if ("${{ inputs.tag }}" -ne "") { "${{ inputs.tag }}" } else { "${{ github.ref_name }}" }
+          $ver = $tag.TrimStart('v')
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+          echo "version=$ver" >> $env:GITHUB_OUTPUT
+
+      - name: Setup MSVC Developer Environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install Ninja & Inno Setup
+        run: choco install ninja innosetup --no-progress
+
+      - name: Configure Release Build
+        run: >
+          cmake -S . -B build-release -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DETCH_COMPILE_SHADERS=OFF
+          -DOMPE_COMPILE_SHADERS=ON
+          -DOMPE_RELEASE_BUILD=ON
+          -DOMPE_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build-release --parallel
+
+      - name: Run Unit Tests
+        run: ctest --test-dir build-release --output-on-failure
+
+      - name: Build Inno Setup Installer
+        shell: pwsh
+        run: |
+          $iscc = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { throw "ISCC.exe not found" }
+          & $iscc "/DAppVersion=${{ steps.ver.outputs.version }}" "/DBuildDir=..\..\build-release" "packaging\windows\omp_desktop.iss"
+
+      - name: Generate SHA256SUMS.txt
+        shell: pwsh
+        run: |
+          $installer = "OMP-Desktop-${{ steps.ver.outputs.version }}-windows-x64-setup.exe"
+          $hash = (Get-FileHash -Algorithm SHA256 "dist\$installer").Hash.ToLowerInvariant()
+          "$hash  $installer`n" | Out-File -FilePath "dist\SHA256SUMS.txt" -Encoding ascii -NoNewline
+
+      - name: Publish GitHub Release Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          overwrite_files: false
+          generate_release_notes: true
+          files: |
+            dist/OMP-Desktop-${{ steps.ver.outputs.version }}-windows-x64-setup.exe
+            dist/SHA256SUMS.txt
